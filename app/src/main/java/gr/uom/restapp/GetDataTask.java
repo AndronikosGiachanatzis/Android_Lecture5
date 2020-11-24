@@ -2,6 +2,9 @@ package gr.uom.restapp;
 
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.ArrayAdapter;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.androidnetworking.AndroidNetworking;
 import com.androidnetworking.common.Priority;
@@ -15,11 +18,20 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 
-public class GetDataTask extends AsyncTask<String, Void, String> {
+public class GetDataTask extends AsyncTask<String, Void, List<Post>> {
 
     public static final String TAG = "RestApp";
-    public String jsonResult;
+    public List<Post> postList;
+
+    private PostArrayAdapter adapter;
+
+    public GetDataTask(PostArrayAdapter  adapter){
+        this.adapter = adapter;
+    }
+
+
 
     public String downloadRestData(String remoteUrl){
         Log.d(TAG, "downloading data...");
@@ -65,34 +77,37 @@ public class GetDataTask extends AsyncTask<String, Void, String> {
     }
 
     @Override
-    protected String doInBackground(String... strings) {
+    protected List<Post> doInBackground(String... strings) {
         String url = strings[0];
         Log.d(TAG, "doing task in background for url " + url);
-//        return downloadRestData(url);
 
-        final StringBuilder result = new StringBuilder();
-        AndroidNetworking.get(url)
-                .setPriority(Priority.LOW)
-                .build()
-                .getAsJSONArray(new JSONArrayRequestListener() {
-                    @Override
-                    public void onResponse(JSONArray response) {
-                        Log.d(TAG, "Response: " + response);
-                        result.append(response.toString());
-                    }
-                    @Override
-                    public void onError(ANError error) {
-                        Log.d(TAG, "error");
-                    }
-                });
-        return result.toString();
+        // get posts in raw json format (just a huge string)
+        String postJson = downloadRestData(url);
+
+        // parse the json data
+        JsonParser jsonParser = new JsonParser();
+
+        // return the data (to postExecute)
+        return jsonParser.parsePostData(postJson);
     }
 
     @Override
-    protected void onPostExecute(String result) {
-        jsonResult = result;
-        Log.d(TAG, "Just got result");
-        Log.d(TAG, jsonResult);
+    protected void onPostExecute(List<Post> posts) {
+        postList = posts;
 
+        // log results
+        Log.d(TAG, "Just got result");
+        for (Post post: postList){
+            Log.d(TAG, post.toString());
+        }
+
+        // inform the adapter that the results have come
+        adapter.setPostList(postList);
+
+
+    }
+
+    public List<Post> getPostList() {
+        return postList;
     }
 }
